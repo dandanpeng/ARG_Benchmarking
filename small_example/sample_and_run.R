@@ -1,37 +1,3 @@
-
-# if(!is.na(new_argv$sample_loci_num)){
-#     print(paste("We are going to sample ", as.character(new_argv$sample_loci_num), "loci."))
-#     sample_loci <- sort(sample(1:100, new_argv$sample_loci_num))
-#     if(sel.intenses != 0){
-#     	sample.pre.sel.freqs <- pre.sel.freqs[sample_loci]
-#     	sample.post.sel.freqs <- post.sel.freqs[sample_loci]
-#     
-#     	sample.eff_sizes <- eff_sizes[sample_loci]
-#     	sample.curr.freqs <- curr.freqs[sample_loci]
-#     
-#     	sample.trait.sd <- sqrt(sum(2 * sample.curr.freqs * (1 - sample.curr.freqs) * sample.eff_sizes^2))
-#     	sample.sel.shift <- sum(2 * sample.eff_sizes * (sample.post.sel.freqs - sample.pre.sel.freqs)) / sample.trait.sd
-#     
-#     	# check if the sampled loci are representative enough
-#     	while(target.shift * .95 >= sel.shift & sel.shift >= target.shift * 1.05){
-#         	sample_loci <- sort(sample(1:100, sample_loci_num))
-#         	sample.pre.sel.freqs <- pre.sel.freqs[sample_loci]
-#         	sample.post.sel.freqs <- post.sel.freqs[sample_loci]
-#         	sample.eff_sizes <- eff_sizes[sample_loci]
-#         	sample.curr.freqs <- curr.freqs[sample_loci]
-#         	sample.trait.sd <- sqrt(sum(2 * sample.curr.freqs * (1 - sample.curr.freqs) * sample.eff_sizes^2))
-#         	sample.sel.shift <- sum(2 * sample.eff_sizes * (sample.post.sel.freqs - sample.pre.sel.freqs)) / sample.trait.sd    
-#     	}
-#     }	
-#     print("Found representative loci samples.")
-#     
-#     trajs <- trajs[sample_loci]
-#     n_ders <- n_ders[sample_loci]
-#     nsites <- nsites[sample_loci]
-#     theta_ls <- theta_ls[sample_loci]
-# }
-
-
 sample_indices_ls <- list()
 
 ms_trees_list <- list()
@@ -51,12 +17,9 @@ for(i in new_argv$loci_start:new_argv$loci_end){
     nsite <- nsites[i]
     theta <- theta_ls[i]
     
-    #counter = 0
     success = 1
     
-    while (success == 1){
-        #ms.string <- paste(ms_dir, "mssel ", as.character(2000), " 1 ", as.character(2000 - n_der), " ", as.character(n_der), " ", traj.fn, " ", sel_site, " -r ", as.character(nsite), " ", as.character(len_hap), " -t ", as.character(theta), " -T -L > ", msout.fn, sep = "")
-        
+    while (success == 1){        
         ms.string <- paste(ms_dir, "mssel ", as.character(n_chroms), " 1 ", as.character(n_chroms - n_der), " ", as.character(n_der), " ", traj.fn, " ", sel_site, " -r ", as.character(nsite), " ", as.character(len_hap), " -t ", as.character(theta), " -T -L > ", msout.fn, sep = "")
         system(ms.string)
     
@@ -280,8 +243,6 @@ for(i in new_argv$loci_start:new_argv$loci_end){
     
     print(paste("simulation locus", as.character(i), "of trait", as.character(iter), "complete"))
 }
-
-#save.image("check_tsinfer_trees.RData")
 
 ##rescale branch length of RENT+ trees
 if(!is.na(new_argv$rent)){
