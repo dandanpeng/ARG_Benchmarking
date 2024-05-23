@@ -950,40 +950,6 @@ estN_waittimes <- function(tree, lins, ctimevec, ell){
        ctimes <- sort(ctimes)
     }
   }
-
-  # find the polytomy/polytomies
-  # if(0 %in% wt){
-  #   multi_tree <- di2multi(tree, tol = 10e-10)
-  #   num_children <- as.data.frame(table(multi_tree$edge[,1]))
-  #   num_children$Var1 <- as.numeric(as.character(num_children$Var1))
-  #   
-  #   polytomy <- num_children[num_children$Freq > 2,]
-  #   for(node in polytomy$Var1){
-  #     # find the position of polytomy time in the coal time vector
-  #     same_coal_index <- which(abs(ctimes - coal.time(multi_tree, node)) < 10e-10)
-  #     interval <- wt[same_coal_index[1]]
-  #     
-  #     n_lin_avail <- length(ctimes) - (same_coal_index[1]-1) 
-  #     n_coal = length(same_coal_index) 
-  #     prob <- numeric()
-  #     prob[1] = 1/choose(n_lin_avail, 2)
-  #     
-  #     if(n_coal > 2){
-  #       for(p in 1:(n_coal-2)){
-  #         prob[p+1] <- 1/choose(n_lin_avail - p, 2)
-  #       }
-  #       sum_p <- sum(prob)
-  #       new_wt <- prob * (interval/sum_p)
-  #     }else if(n_coal == 2){
-  #       new_wt <- interval/2
-  #     }else{
-  #       new_wt <- 0
-  #     }
-  # 
-  #     ctimes[same_coal_index[-length(same_coal_index)]] <- ctimes[same_coal_index[-length(same_coal_index)]] - new_wt
-  #     ctimes <- sort(ctimes)
-  #   }
-  # }
   
   if(length(ctimes) > 1){
     for(i in 2:length(ctimes)){
@@ -1094,28 +1060,6 @@ p_ests_wait <- function(locus, ref.tree, alt.tree, lins.ls, ctime.list, time.eva
 }
 
 
-
-############ add in Oct 2023 to test shared-N waiting-time estimator #######
-
-skyline.traj <- function(tree, ctime.vec, time.eval, ell){
-  skyline.N.mat <- estN_waittimes(tree, ctime.vec, ell)
-  N.traj <- numeric(length(time.eval))
-  for(i in 1:length(time.eval)){
-    N.traj[i] <- getN_estNmat(skyline.N.mat, time.eval[i], est.only = TRUE)
-  }
-  N.traj
-}
-
-get.skyline.mat <- function(tree_ls, ctime.list, time.eval, subtree, ell = 1){
-  N.mat <- matrix(nrow = length(time.eval), ncol = length(ctime.list))
-  for(i in 1:length(ctime.list)){
-    N.mat[,i] <- skyline.traj(tree_ls[[i]], ctime.list[[i]][[subtree]], time.eval, ell)
-  }
-  N.mat
-}
-
-
-
 #############################################################################
 
 
@@ -1155,9 +1099,6 @@ mean_waittimes <- function(pt.time, af.traj, N, ctimevec, ell, mean.fn = "harmon
 	cbind(ctimes, Ns, rep(0, length(ctimes)))
 }
 
-#ctimevec <- times.c[[200]][[3]]
-#af.traj <- mat.trajs[,200]
-#harmN_waittimes(pt.time, af.traj, N, ctimevec, 5)
 
 #Function that uses the actual harmonic mean Ns in intervals between wait times.
 #Goal is to see whether waiting-time estimator would be biased if estimation
@@ -1185,166 +1126,6 @@ p_ests_wait_cheat.mean <- function(pt.time, af.traj, N, ctime.list, time.eval, e
 }
 
 
-#p.wt <- p_ests_wait(times.c[[50]], time, ell.ref = 1, ell.alt = 1)
-#p.hm <- p_ests_wait_cheat.mean(pt.time, af.traj, N, times.c[[50]], time, ell.ref = 1, ell.alt = 1)
-#p.am <- p_ests_wait_cheat.mean(pt.time, af.traj, N, times.c[[50]], time, ell.ref = 1, ell.alt = 1, mean.fn = "arithmetic")
-#plot(pt.time, af.traj, type = "l")
-#lines(time, p.wt[,1], col = "red")
-#lines(time, p.am, col = "purple")
-#lines(time, p.hm, col = "green")
-
-##Need to refactor waiting-time estimator functions.
-#Goal is to allow search across different partitions of the # of coalescent
-#events to maximize AIC.
-
-#Take in vector of coalescence times and a vector of ell  values
-#(number of coalescences to wait for before making
-#an estimate). The entries in the l vector should be a partition
-#of the length of ctimevec (i.e. all positive integers, with 
-#sum(l.vec) == length(ctimevec)). Return a matrix with column 1 equal to the 
-#max time at which N estimate applies, column 2 equal to N estimate,
-#and column 3 variance of the N estimate. 
-estN_waittimes_partition <- function(ctimevec, l.vec){
-	ctimevec <- sort(ctimevec)
-	if(sum(l.vec) != length(ctimevec) | mean(l.vec >= 1) != 1 |  !(all.equal(l.vec, as.integer(l.vec)))){
-		stop("l.vec must be an ordered partition of the number of coalescences.")
-	}
-	inds <- cumsum(l.vec)
-	ctimes <- ctimevec[inds]
-	N.ests <- numeric(length(ctimes))
-	N.vars <- N.ests
-	wt <- ctimes[1]
-	n <- length(ctimevec) + 1
-	l <- inds[1]
-	N.ests[1] <- wt/(2*(1/(n-l) - 1/n))
-	N.vars[1] <- (N.ests[1]^2)*var.mult(n-l, l)
-	if(length(ctimes) > 1){
-		for(i in 2:length(ctimes)){
-			wt <- ctimes[i] - ctimes[i-1]
-			n <- length(ctimevec) + 1 - inds[i-1]
-			l <- l.vec[i]		
-			N.ests[i] <- wt/(2*(1/(n-l) - 1/n))
-			N.vars[i] <- (N.ests[i]^2)*var.mult(n-l, l)
-		}
-	}	
-	cbind(ctimes, N.ests, N.vars)
-}
-
-
-#Compute the log likelihood associated with a set of N estimates
-#in an matrix like the ones produced by estN_waittimes().
-#Requires all the coalescent times (in ctimevec).
-loglike.Nests.wait <- function(ctimevec, Nestmat){
-	inds.vec <- which(ctimevec %in% Nestmat[,1]) #the events at which N is assessed.
-	l.vec <- diff(c(0, inds.vec))
-	if(length(l.vec) == length(ctimevec)){
-		N.ests <- Nestmat[,2]
-	}
-	if(length(l.vec) < length(ctimevec)){
-		N.ests <- rep(Nestmat[,2], times = l.vec)
-	}	
-	lin.choice <- choose((length(ctimevec)+1):2, 2)
-	lls <- log(lin.choice) - log(N.ests) - c(ctimevec[1], diff(ctimevec)) * lin.choice / N.ests
-	sum(lls)
-}
-
-
-#takes in a vector and an index, ind. Returns a vector
-#1 shorter than vec, where the indth entry is equal to the sum
-#of the indth and ind+1th entries of vec, and all other entries
-#are equal to entries in vec.
-lumpvec <- function(vec, ind){
-	if(ind >= length(vec)){
-		stop("The index must be less than the length of the vector.")	
-	}
-	sum.ent <- vec[ind] + vec[ind + 1]
-	if(ind == 1){return(c(sum.ent, vec[-(1:2)]))}
-	if(ind == (length(vec) - 1)){return(c(vec[-(ind:(ind+1))], sum.ent ) )}
-	c(vec[1:(ind-1)], sum.ent, vec[(ind+2):length(vec)])
-}
-
-
-#Take a vector that represents an ordered partition of an integer.
-#Return a list of every vector that represents an ordered partition
-#of the same integer and is formed by "lumping" two entries in the 
-#original vector.
-lumps.lvec <- function(lvec){
-	outlist <- list()
-	for(i in 1:(length(lvec) - 1)){
-		outlist[[i]] <- lumpvec(lvec, i)	
-	}
-	outlist
-}
-
-
-#Do a greedy search for smoothing with best AIC, where smoothing is determined
-#by an ordered partition of #s of coalescences to wait for.
-#Start with every interval having its own N estimate, then lump
-#neighboring intervals in the most favorable way (AIC-wise) until
-#AIC no longer improves or there is just one lump 
-#weight.K = 1 gives AIC penalty. weight.K = log(length(ctimevec))/2 gives BIC penalty
-find.lvec.AIC.lump <- function(ctimevec, weight.K = 1){
-	ctimevec <- sort(ctimevec)
-	ctimevec <- breakties.ctimes(ctimevec)	
-	S <- length(ctimevec)
-	if(S == 1){return(1)}
-	K <- S
-	best.lvec <- rep(1, length(ctimevec))
-	Nmat <- estN_waittimes_partition(ctimevec, best.lvec)
-	ll <- loglike.Nests.wait(ctimevec, Nmat)
-	best.AIC <- ll - K 
-	best.contender <- best.AIC + 1
-	while(best.AIC <= best.contender & K > 1){
-		contender.AICs <- numeric()
-		contenders <- lumps.lvec(best.lvec)
-		K <- length(contenders[[1]])		
-		for(i in 1:length(contenders)){
-			Nmat <- estN_waittimes_partition(ctimevec, contenders[[i]])
-			contender.AICs[i] <- loglike.Nests.wait(ctimevec, Nmat) - K * weight.K
-		}
-		best.contender <- max(contender.AICs)
-		if(best.contender > best.AIC){
-			best.AIC <- best.contender
-			best.lvec <- contenders[[which(contender.AICs == best.contender)[1]]]
-		}
-	}
-	best.lvec
-}
-
-#Given an integer to partition (int.to.part), and an integer l,
-#returns (as a vector) an ordered partition of int.to.part 
-#where all but the final entry
-#are equal to l.
-get.fixedl.part <- function(int.to.part, l = 1){
-	n.ls <- int.to.part %/% l
-	rem <- int.to.part %% l
-	part <- rep(l, n.ls)	
-	if(rem >= 1){part <- c(part, rem)}
-	part
-}
-
-
-#Do a search for smoothing parameter l (the number of coalescent events to wait for) 
-#with best AIC. If there are fewer than l remaining coalescent events,
-#we just wait for all of them to occur.
-#weight.K = 1 gives AIC penalty. weight.K = log(length(ctimevec))/2 gives BIC penalty
-find.l.AIC <- function(ctimevec, weight.K = 1){
-	ctimevec <- sort(ctimevec)
-	ctimevec <- breakties.ctimes(ctimevec)	
-	S <- length(ctimevec)
-	if(S == 1){return(1)}
-	parts <- list()
-	AICs <- numeric(length(ctimevec))
-	for(i in 1:length(ctimevec)){
-		part <- get.fixedl.part(length(ctimevec), i)
-		Nmat <- estN_waittimes_partition(ctimevec, part)
-		AICs[i] <- loglike.Nests.wait(ctimevec, Nmat) - nrow(Nmat) * weight.K
-	}
-	which.max(AICs)[1]
-}
-
-
-
 #breaks ties in a vector of coalescent times by adding a small amount to the latter of any
 #two times that agree.
 breakties.ctimes <- function(ctimevec){
@@ -1360,86 +1141,6 @@ breakties.ctimes <- function(ctimevec){
 	if(sum(diff(ctimevec) < 10^(-10)) > 0){return(breakties.ctimes(ctimevec))}
 	ctimevec
 }
-
-
-#Take in a list of three vectors of coalescence times,
-#one for the whole tree (element [[1]]), 
-#one for the "ref" subtree (element [[2]]), 
-#and one for the "alt" subtree (element [[3]]).
-#Also take in a list of times (in the same units as the vector of 
-#coalescent times).
-#returns estimates of alt allele frequency and estimated variance of 
-#frequency estimate. 
-#This version assumes that the alt allele is derived and assigns alt
-#frequency to 0 before place proportion on the branch on which the mutation
-#must have occurred. 
-p_ests_wait_AICpartition <- function(ctime.list, time.eval, place = 0.5, weight.K.ref = 1, weight.K.alt = 1){
-	lvec.ref <- find.lvec.AIC.lump(ctime.list[[2]], weight.K.ref)
-	lvec.alt <- find.lvec.AIC.lump(ctime.list[[3]], weight.K.alt)
-	Ns_ref <- estN_waittimes_partition(breakties.ctimes(sort(ctime.list[[2]])), lvec.ref)
-	Ns_alt <- estN_waittimes_partition(breakties.ctimes(sort(ctime.list[[3]])), lvec.alt)
-	#tree join time is the time in full tree that doesn't appear in either subtree.
-	tj <- tree_join_time(ctime.list[[1]], ctime.list[[2]][-length(ctime.list[[2]])], ctime.list[[3]][-length(ctime.list[[3]])], NULL)
-	lca <- Ns_alt[nrow(Ns_alt), 1]	
-	if(tj >= lca){
-		Ns_alt <- rbind(Ns_alt, c(lca + (tj - lca)*place, 0, 0))
-	}
-	if(tj < lca){
-		Ns_alt <- rbind(Ns_alt, c(lca + 0.001, 0, 0))
-	}
-	p.ests <- numeric(length(time.eval))
-	var.ests <- p.ests
-	for(i in 1:length(time.eval)){
-		Ns.r.t <- getN_estNmat(Ns_ref, time.eval[i])
-		Ns.a.t <- getN_estNmat(Ns_alt, time.eval[i])
-		p.ests[i] <- Ns.a.t[1]/(Ns.a.t[1] + Ns.r.t[1])
-		var.ests[i] <- ts_var_quotient(Ns.a.t[1], Ns.a.t[2], Ns.a.t[1] + Ns.r.t[1], Ns.a.t[2] + Ns.r.t[2], Ns.a.t[2])
-	}
-	cbind(p.ests, var.ests)
-}
-
-
-
-#Take in a list of three vectors of coalescence times,
-#one for the whole tree (element [[1]]), 
-#one for the "ref" subtree (element [[2]]), 
-#and one for the "alt" subtree (element [[3]]).
-#Also take in a list of times (in the same units as the vector of 
-#coalescent times).
-#returns estimates of alt allele frequency and estimated variance of 
-#frequency estimate. 
-#This version assumes that the alt allele is derived and assigns alt
-#frequency to 0 before place proportion on the branch on which the mutation
-#must have occurred. 
-p_ests_wait_AIC_l <- function(ctime.list, time.eval, place = 0.5, weight.K.ref = 1, weight.K.alt = 1){
-	l.ref <- find.l.AIC(ctime.list[[2]], weight.K.ref)
-	l.alt <- find.l.AIC(ctime.list[[3]], weight.K.alt)
-	lvec.ref <- get.fixedl.part(length(ctime.list[[2]]), l.ref)
-	lvec.alt <- get.fixedl.part(length(ctime.list[[3]]), l.alt)
-	Ns_ref <- estN_waittimes_partition(breakties.ctimes(sort(ctime.list[[2]])), lvec.ref)
-	Ns_alt <- estN_waittimes_partition(breakties.ctimes(sort(ctime.list[[3]])), lvec.alt)
-	#tree join time is the time in full tree that doesn't appear in either subtree.
-	tj <- tree_join_time(ctime.list[[1]], ctime.list[[2]][-length(ctime.list[[2]])], ctime.list[[3]][-length(ctime.list[[3]])], NULL)
-	lca <- Ns_alt[nrow(Ns_alt), 1]	
-	if(tj >= lca){
-		Ns_alt <- rbind(Ns_alt, c(lca + (tj - lca)*place, 0, 0))
-	}
-	if(tj < lca){
-		Ns_alt <- rbind(Ns_alt, c(lca + 0.001, 0, 0))
-	}
-	p.ests <- numeric(length(time.eval))
-	var.ests <- p.ests
-	for(i in 1:length(time.eval)){
-		Ns.r.t <- getN_estNmat(Ns_ref, time.eval[i])
-		Ns.a.t <- getN_estNmat(Ns_alt, time.eval[i])
-		p.ests[i] <- Ns.a.t[1]/(Ns.a.t[1] + Ns.r.t[1])
-		var.ests[i] <- ts_var_quotient(Ns.a.t[1], Ns.a.t[2], Ns.a.t[1] + Ns.r.t[1], Ns.a.t[2] + Ns.r.t[2], Ns.a.t[2])
-	}
-	cbind(p.ests, var.ests)
-}
-
-
-
 
 #Function that returns a list of three vectors of coalescence times,
 #one for the whole tree (element [[1]] of the output), 
@@ -1474,7 +1175,6 @@ an_trees_to_times <- function(locus, tree.all, tree.ref, tree.alt, times, sure.a
   tj <- altt.info[[2]]
   add_mutation(tree.all, tree.ref, tree.alt, allt, reft, altt, tj, times, sure.alt.is.derived, place)
 }
-  
   
 
 #Takes a list of three vectors of coalescence times,
@@ -1519,26 +1219,6 @@ times_to_lins <- function(tree.times, times = seq(0.005, 8.005, by = 0.01)){
 est_af_traj_neut <- function(lins){
 	lins[,2]/rowSums(lins)
 }
-
-
-  # if(!is.monophyletic(argneedle_trees_list[[i]], der_trees_argneedle[[i]]$tip.label)){
-  #   tips_to_check <- der_trees_argneedle[[i]]$tip.label
-  #   for(j in 1:length(tips_to_check)){
-  #      tip_j <- tips_to_check[j]
-  #      for(k in 1:length(tips_to_check)){
-  #        if(j != k){
-  #           tip_k <- tips_to_check[k]
-  #           mrca <- getMRCA(argneedle_trees_list[[i]], c(tip_j, tip_k))
-  #           descendants <- getDescendants(argneedle_trees_list[[i]], mrca)
-  #           if(mean(argneedle_trees_list[[1]]$tip.label[descendants[descendants < 2000]] %in% tips_to_check) == 1){
-  #             pass
-  #           }
-  #        }
-  #      }
-  #   }
-  # 
-  #   
-  # }
 
 #Takes a matrix of lineage numbers per time and returns
 #the binomial sampling variance of the neutral MLE of the allele frequency.
@@ -2372,14 +2052,6 @@ vcf_input <- function(derived_info, snp_pos){
   colnames(vcf_table) <- c("#CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER", "INFO", "FORMAT", sample_ids)
   write.table(vcf_table, file = "singer.vcf", row.names = FALSE, quote = FALSE, sep = "\t")
 }
-
-# check_risky_structure <- function(tree, der_tree, anc_tree){
-#   if(!is.monophyletic(tree, unlist(der_tree$tip.label)) & !is.monophyletic(tree, unlist(anc_tree$tip.label))){
-#     return(TRUE)
-#   }else{
-#     return(FALSE)
-#   }
-# }
 
 
 
