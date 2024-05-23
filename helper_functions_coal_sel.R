@@ -1,5 +1,3 @@
-#3/20/18 by Doc Edge
-#Goal: Assemble functions useful for project on coalescent approcahes to polygenic selection.
 #Many of these functions relate to working with trees stored as package ape phylo-type objects.
 
 #package ape is needed for representing sample trees.
