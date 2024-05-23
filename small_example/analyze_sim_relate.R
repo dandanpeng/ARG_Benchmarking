@@ -44,45 +44,6 @@ var.phen.wt_l1_relate <- 4 * trajs_var_wt_l1_relate %*%  eff_sizes^2
 traj.phen.wt_l1_relate[time == 0] <- traj.phen.neut.relate[time == 0]
 var.phen.wt_l1_relate[time == 0] <- var.phen.neut.bin.relate[time == 0]
 print("waittime succeed!")
-#wt-shared N
-# matrix of sharedN-estimated allele-frequency
-#trajs_est_sharedN.wt.relate <- matrix(nrow = length(time), ncol = length(relate_trees_list))
-# variance of estimated allele frequency
-#trajs_var_sharedN.wt.relate <- matrix(nrow = length(time), ncol = length(relate_trees_list))
-
-#anc_trajs_est_sharedN.relate <- list() #list (length = # of loci) of matrices with each matrix including the estN.a and varN.a at the specific locus
-#der_trajs_est_sharedN.relate <- list()
-#sum_anc_der.relate <- matrix(nrow = length(time), ncol = length(relate_trees_list))
-
-#for(i in 1:length(relate_trees_list)){
-#  anc_trajs_est_sharedN.relate[[i]] <- get.skyline.mat(times.c.relate[[i]], time, ell.ref = 1, ell.alt = 1, place = 0.5, ord2adj = FALSE)[[1]]
-#  der_trajs_est_sharedN.relate[[i]] <- get.skyline.mat(times.c.relate[[i]], time, ell.ref = 1, ell.alt = 1, place = 0.5, ord2adj = FALSE)[[2]]
-#  sum_anc_der.relate[,i] <- anc_trajs_est_sharedN.relate[[i]][,1] + der_trajs_est_sharedN.relate[[i]][,1]
-#}
-
-# estimate of the denominator, average across loci.
-#total.N.traj <- rowMeans(sum_anc_der.relate)
-#total.N.traj <- rep(2, length(time))
-
-#for(i in 1:length(relate_trees_list)){
-  #trajs_est_sharedN.wt[, i] <- (der_trajs_est_sharedN.relate[[i]][,1] / total.N.traj + (1 - anc_trajs_est_sharedN[[i]][,1]/total.N.traj))/2
-  #second-order taylor expansion on the original allele freq expression
-  #original_freq <- (der_trajs_est_sharedN.relate[[i]][,1] / total.N.traj + (1 - anc_trajs_est_sharedN.relate[[i]][,1]/total.N.traj))/2
-  #second.deri.d <- (der_trajs_est_sharedN.relate[[i]][,1] - anc_trajs_est_sharedN.relate[[i]][,1] - n.locis*total.N.traj)/(n.locis^2* total.N.traj^3)
-  #second.deri.a <- (der_trajs_est_sharedN.relate[[i]][,1] - anc_trajs_est_sharedN.relate[[i]][,1] + n.locis*total.N.traj)/(n.locis^2* total.N.traj^3)
-  #trajs_est_sharedN.wt.relate[, i] <- original_freq + 1/2*second.deri.d*der_trajs_est_sharedN.relate[[i]][,2] + 1/2*second.deri.a*anc_trajs_est_sharedN.relate[[i]][,2]
-  #for(j in 1:length(time)){
-    #trajs_var_sharedN.wt.relate[j, i] <- ts_var_quotient(der_trajs_est_sharedN.relate[[i]][j,1], der_trajs_est_sharedN.relate[[i]][j,2],
-    #                                              total.N.traj[j], 1/(n.locis^2)*(der_trajs_est_sharedN.relate[[i]][j,2] + anc_trajs_est_sharedN.relate[[i]][j,2]),
-    #                                              1/n.locis * der_trajs_est_sharedN.relate[[i]][j,2])
-  #}
-#}
-
-#traj.phen.sharedN.wt.relate <- 2*trajs_est_sharedN.wt.relate %*% eff_sizes
-#var.phen.sharedN.wt.relate <- 4 * trajs_var_sharedN.wt.relate %*%  eff_sizes^2
-#traj.phen.sharedN.wt.relate[time == 0] <- traj.phen.neut.relate[time == 0]
-#var.phen.sharedN.wt.relate[time == 0] <- var.phen.neut.bin.relate[time == 0]
-
 
 true.per.time <- numeric(0)
 for(j in 1:length(time)){
