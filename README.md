@@ -16,7 +16,7 @@ The details of the arguments are provided here:
 | --iter_start | start number of trait |
 |--iter_end | end number of trait|
 
-To sample and input simulated haplotypes to ARG-estimation methods, run `loop_pheno_sim_reps.R` under `small_example/example`:
+To sample and input simulated haplotypes to ARG-estimation methods, run `loop_pheno_sim_reps.R` under `small_example/example` (here we take SINGER as an example, you could use `--rent`, `--relate`, `--tsinfer`, `--argweaver`, `--argneedle` with `yes` to run the method(s) you are interested in):
 ```
 Rscript loop_pheno_sims_reps.R --n_chromss 200 --n_loci 100 --out singer_output --temp temp_out --sample_seq_num 200 --singer yes --iter_start 1 --iter_end 100
 ```
