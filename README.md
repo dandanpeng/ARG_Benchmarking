@@ -26,4 +26,4 @@ To apply Edge & Coop (2019) estimators on the estimated marginal tree, run `run_
 ```
 Rscript run_analysis2.R --n_chromss 200 --n_loci 100 --out singer_output --iter_start 1 --iter_end 100 --singer yes --save singer_analyzed
 ```
-
+As above mentioned, you can change the value of `--out` and replace `--singer` with the method(s) you are interested in.
