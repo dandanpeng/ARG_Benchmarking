@@ -1,3 +1,36 @@
+# if(!is.na(run_argv$sample_loci_num)){
+#     print(paste("We are going to sample ", as.character(run_argv$sample_loci_num), "loci."))
+#     sample_loci <- sort(sample(1:100, run_argv$sample_loci_num))
+#     if(sel.intenses != 0){
+#     	sample.pre.sel.freqs <- pre.sel.freqs[sample_loci]
+#     	sample.post.sel.freqs <- post.sel.freqs[sample_loci]
+#     
+#     	sample.eff_sizes <- eff_sizes[sample_loci]
+#     	sample.curr.freqs <- curr.freqs[sample_loci]
+#     
+#     	sample.trait.sd <- sqrt(sum(2 * sample.curr.freqs * (1 - sample.curr.freqs) * sample.eff_sizes^2))
+#     	sample.sel.shift <- sum(2 * sample.eff_sizes * (sample.post.sel.freqs - sample.pre.sel.freqs)) / sample.trait.sd
+#     
+#     	# check if the sampled loci are representative enough
+#     	while(target.shift * .95 >= sel.shift & sel.shift >= target.shift * 1.05){
+#         	sample_loci <- sort(sample(1:100, sample_loci_num))
+#         	sample.pre.sel.freqs <- pre.sel.freqs[sample_loci]
+#         	sample.post.sel.freqs <- post.sel.freqs[sample_loci]
+#         	sample.eff_sizes <- eff_sizes[sample_loci]
+#         	sample.curr.freqs <- curr.freqs[sample_loci]
+#         	sample.trait.sd <- sqrt(sum(2 * sample.curr.freqs * (1 - sample.curr.freqs) * sample.eff_sizes^2))
+#         	sample.sel.shift <- sum(2 * sample.eff_sizes * (sample.post.sel.freqs - sample.pre.sel.freqs)) / sample.trait.sd    
+#     	}
+#     }	
+#     print("Found representative loci samples.")
+#     
+#     trajs <- trajs[sample_loci]
+#     n_ders <- n_ders[sample_loci]
+#     nsites <- nsites[sample_loci]
+#     theta_ls <- theta_ls[sample_loci]
+# }
+
+
 sample_indices_ls <- list()
 
 ms_trees_list <- list()
@@ -11,15 +44,18 @@ singer_samples_list <- list()
 singer_trees_list <- list()
 ms_haplotypes_list <- list()
 
-for(i in new_argv$loci_start:new_argv$loci_end){
+for(i in run_argv$loci_start:run_argv$loci_end){
     write.traj(traj.fn, trajs[[i]])
     n_der <- n_ders[i]
     nsite <- nsites[i]
     theta <- theta_ls[i]
     
+    #counter = 0
     success = 1
     
-    while (success == 1){        
+    while (success == 1){
+        #ms.string <- paste(ms_dir, "mssel ", as.character(2000), " 1 ", as.character(2000 - n_der), " ", as.character(n_der), " ", traj.fn, " ", sel_site, " -r ", as.character(nsite), " ", as.character(len_hap), " -t ", as.character(theta), " -T -L > ", msout.fn, sep = "")
+        
         ms.string <- paste(ms_dir, "mssel ", as.character(n_chroms), " 1 ", as.character(n_chroms - n_der), " ", as.character(n_der), " ", traj.fn, " ", sel_site, " -r ", as.character(nsite), " ", as.character(len_hap), " -t ", as.character(theta), " -T -L > ", msout.fn, sep = "")
         system(ms.string)
     
@@ -30,28 +66,27 @@ for(i in new_argv$loci_start:new_argv$loci_end){
         
         #################################### RENT+ #################################
         # sample from mssel output (actually transferred mssel ouput which can be fed to RENT+) 
-        if(!is.na(sample_seq_num)){
-            sample_rent_input(rent_in_fn, rent_sample_in, sample_seq_num, i - new_argv$loci_start + 1) #sample chromosomes
+        if(!is.na(run_argv$sample_seq_num)){
+            sample_rent_input(rent_in_fn, rent_sample_in, run_argv$sample_seq_num, i - run_argv$loci_start + 1) #sample chromosomes
             
-            if(!is.na(new_argv$rent)){
-		start.time <- Sys.time()
+            if(!is.na(run_argv$rent)){
                 rent.string <- paste("java -jar ", rentplus_fn, " -t -l ", as.character(len_hap), " ", rent_sample_in, sep = "")
+                start.time <- Sys.time()
                 success = system(rent.string)
-		end.time <- Sys.time()
-		#running_time <- c(running_time, end.time - start.time)
-                
+                end.time <- Sys.time()
+                running_time <- c(running_time, end.time - start.time)
                 if(success == 0){rent_in_fn = rent_sample_in} #when we need to sample and run RENT+
             }else{
                 rent_in_fn = rent_sample_in
                 success = 0 # when we need to sample but don't want to run RENT+
             }
         }else{ 
-            if(!is.na(new_argv$rent)){# when we don't need to sample but need to run RENT+
+            if(!is.na(run_argv$rent)){# when we don't need to sample but need to run RENT+
 		start.time <- Sys.time()
                 rent.string <- paste("java -jar ", rentplus_fn, " -t -l ", as.character(len_hap), " ", rent_in_fn, sep = "")
                 success = system(rent.string)
 		end.time <- Sys.time()
-		print(paster("running time: ", as.character(end.time - start.time)))
+		print(paste("running time: ", as.character(end.time - start.time)))
             }else{ #when we don't need to sample and don't need to run RENT+
                 success = 0
             }
@@ -69,14 +104,14 @@ for(i in new_argv$loci_start:new_argv$loci_end){
 	posits.rs <- cumsum(dists)
 	ms_to_extract <- which.max(posits.rs[posits.rs < sel_site]) + 1
 	if(length(ms_to_extract)  == 0){ms_to_extract <- 1}
-	if(!is.na(sample_seq_num)){
+	if(!is.na(run_argv$sample_seq_num)){
 	    pre_tree <- read.tree(text = msoutlines[4 + ms_to_extract])
-	    ms_trees_list[[i - new_argv$loci_start + 1]] <- drop.tip(pre_tree, setdiff(as.character(c(1:2000)), as.character(sample_indices_ls[[i - new_argv$loci_start + 1]])))
+	    ms_trees_list[[i - run_argv$loci_start + 1]] <- drop.tip(pre_tree, setdiff(as.character(c(1:2000)), as.character(sample_indices_ls[[i - run_argv$loci_start + 1]])))
 	}else{
-	    ms_trees_list[[i - new_argv$loci_start + 1]] <- read.tree(text = msoutlines[4 + ms_to_extract])
+	    ms_trees_list[[i - run_argv$loci_start + 1]] <- read.tree(text = msoutlines[4 + ms_to_extract])
 	}
     
-    if(!is.na(new_argv$rent)){
+    if(!is.na(run_argv$rent)){
         print("start to run rent+")
         #Read in trees at selected site in rent+
         rent_trees_fn <- paste(rent_in_fn, ".trees", sep = "")
@@ -97,7 +132,7 @@ for(i in new_argv$loci_start:new_argv$loci_end){
         }
     
         rent_sel_tree_newick <- sub(paste(rent_to_extract, "\t", sep = ""), "", rent_trees[rent_sel_ind])
-        rent_trees_list[[i - new_argv$loci_start + 1]] <- read.tree(text = paste(rent_sel_tree_newick, ";", sep = ""))
+        rent_trees_list[[i - run_argv$loci_start + 1]] <- read.tree(text = paste(rent_sel_tree_newick, ";", sep = ""))
     }
     
     snp_pos <- recover_pos(rent_in_fn, len_hap)
@@ -107,7 +142,7 @@ for(i in new_argv$loci_start:new_argv$loci_end){
 
     ############################### RELATE #############################
     #transfer rent+ input to RELATE recognized format
-    if(!is.na(new_argv$relate)){
+    if(!is.na(run_argv$relate)){
         relate_input(derived_info, snp_pos, n_chromss)
         
         print("start to run RELATE")
@@ -123,7 +158,6 @@ for(i in new_argv$loci_start:new_argv$loci_end){
                                "--output data")
         system(relate.string)
         end.time <- Sys.time()
-	running_time <- c(running_time, end.time - start.time)
 	#print(paste("running time", as.character(end.time - start.time)))
         #Read in trees at selected site in RELATE
         relate_sel_tree <- paste("../relate/RelateExtract --mode AncToNewick",
@@ -133,37 +167,36 @@ for(i in new_argv$loci_start:new_argv$loci_end){
                               "--output data")
         print("execute relateextract")
         system(relate_sel_tree)
-        relate_trees_list[[i - new_argv$loci_start + 1]] <- read.tree(text = readLines("data.newick"))
+        relate_trees_list[[i - run_argv$loci_start + 1]] <- read.tree(text = readLines("data.newick"))
         setwd("..")
         
-        for(k in 1:length(relate_trees_list[[i - new_argv$loci_start + 1]]$tip.label)){
-          relate_trees_list[[i - new_argv$loci_start + 1]]$tip.label[k] <- as.character(as.numeric(relate_trees_list[[i - new_argv$loci_start + 1]]$tip.label[k]) + 1)
+        for(k in 1:length(relate_trees_list[[i - run_argv$loci_start + 1]]$tip.label)){
+          relate_trees_list[[i - run_argv$loci_start + 1]]$tip.label[k] <- as.character(as.numeric(relate_trees_list[[i - run_argv$loci_start + 1]]$tip.label[k]) + 1)
         }
     }
     
     ################################ tsinfer #############################
-    if(!is.na(new_argv$tsinfer)){
+    if(!is.na(run_argv$tsinfer)){
         #run tsinfer
         print("start to run tsinfer")
         #source("TSinfer.R")
         data =  cbind(snp_pos, derived_info)
-	      #write.csv(data, paste(new_argv$temp, "/data.csv", sep = ''))
+	      #write.csv(data, paste(run_argv$temp, "/data.csv", sep = ''))
 	      #sel_row = which(data[, 1] == sel_site)
 
         #Read in tree at selected site in tsinfer
 	options(digits.secs = 6)
-	#start.time <- Sys.time()
+	start.time <- Sys.time()
 	      tsinfer_sel_tree_newick <- tsfunc(data, sel_site - 1, N, u) # sel_site - 1 because the position is 0-based in tsinfer 
-	#end.time <- Sys.time()
-	#running_time <- c(running_time, end.time - start.time)
-	#print(paste("running time", as.character(end.time - start.time)))
-        tsinfer_trees_list[[i- new_argv$loci_start + 1]] <- read.tree(text = tsinfer_sel_tree_newick)
-      	tsinfer_trees_list[[i - new_argv$loci_start + 1]]$tip.label <- as.character(as.numeric(gsub("n", "", tsinfer_trees_list[[i - new_argv$loci_start + 1]]$tip.label)) + 1)
+	end.time <- Sys.time()
+	print(paste("running time", as.character(end.time - start.time)))
+        tsinfer_trees_list[[i- run_argv$loci_start + 1]] <- read.tree(text = tsinfer_sel_tree_newick)
+      	tsinfer_trees_list[[i - run_argv$loci_start + 1]]$tip.label <- as.character(as.numeric(gsub("n", "", tsinfer_trees_list[[i - run_argv$loci_start + 1]]$tip.label)) + 1)
     }
     
     ###############################  ARGWeaver #############################
   
-    if(!is.na(new_argv$argweaver)){
+    if(!is.na(run_argv$argweaver)){
         print("start to run ARGWeaver")
         
         aw_input(rent_in_fn, snp_pos, len_hap, new_temp) 
@@ -187,12 +220,12 @@ for(i in new_argv$loci_start:new_argv$loci_end){
             sel_tree$tip.label <- unlist(lapply(sel_tree$tip.label, FUN = change_aw_label))
             argweaver_samples_list[[sample + 1]] <- sel_tree
         }
-        argweaver_trees_list[[i - new_argv$loci_start + 1]] <- argweaver_samples_list
+        argweaver_trees_list[[i - run_argv$loci_start + 1]] <- argweaver_samples_list
     }
     
     ###############################  ARG-Needle #############################
     
-    if(!is.na(new_argv$argneedle)){
+    if(!is.na(run_argv$argneedle)){
       print("start to run ARG-Needle")
       arg_needle_input(derived_info, snp_pos, n_chromss)
       asmc_freq(derived_info, snp_pos)
@@ -208,29 +241,29 @@ for(i in new_argv$loci_start:new_argv$loci_end){
       an_newick(paste(new_temp, "/an_data.argn", sep = ""), paste(new_temp, "/argn_newick.txt", sep = ""))
       argn_tree = read.tree(file = paste(new_temp, "/argn_newick.txt", sep = ''))
       argn_tree$tip.label <- as.character(as.numeric(argn_tree$tip.label) + 1)
-      argneedle_trees_list[[i - new_argv$loci_start + 1]] <- argn_tree
+      argneedle_trees_list[[i - run_argv$loci_start + 1]] <- argn_tree
       
     }
     
     ###############################  Singer #############################
-    if(!is.na(new_argv$singer)){
+    if(!is.na(run_argv$singer)){
       print("start to run Singer")
       
       setwd(new_temp)
       vcf_input(derived_info, snp_pos)
 
       start.time <- Sys.time()
-      system("~/sc1/singer-0.1.7-beta-linux-x86_64/singer_master -Ne 10000 -m 2e-8 -ratio 1.25 -start 0 -end 2e5 -vcf singer -output singer -n 700 -thin 10 -polar 0.99")
+      system(paste("~/proj/singer-0.1.7-beta-linux-x86_64/singer_master -Ne 10000 -m 2e-8 -ratio 1.25 -start 0 -end", as.character(len_hap-1), "-vcf singer -output singer -n 700 -thin 10 -polar 0.99"))
       end.time <- Sys.time()
       print(end.time - start.time)
-      system("~/sc1/singer-0.1.7-beta-linux-x86_64/convert_to_tskit -input singer -output singer -start 200 -end 699 -step 10")
+      system("~/proj/singer-0.1.7-beta-linux-x86_64/convert_to_tskit -input singer -output singer -start 200 -end 699 -step 10")
       for(index in 1:50){
         tree_index <- (19 + index) * 10
         treeSeqFile <- paste("singer_", as.character(tree_index), ".trees", sep = "")
         singer_samples_list[[index]] <- read.tree(text = get_singer_tree(treeSeqFile, sel_site))
         singer_samples_list[[index]]$tip.label <-  as.character(as.numeric(gsub("n", "", singer_samples_list[[index]]$tip.label)) + 1)
       }
-      singer_trees_list[[i - new_argv$loci_start + 1]] <- singer_samples_list
+      singer_trees_list[[i - run_argv$loci_start + 1]] <- singer_samples_list
 
       
       setwd("..")
@@ -239,21 +272,23 @@ for(i in new_argv$loci_start:new_argv$loci_end){
     #save the haplotypes produced by ms (and fed to rent+) in a list entry.
     #the result will be a character vector. The first entry in the vector is relative (0-1) positions, with the selected
     #site at 0.05. The remaining entries are string haplotypes of 0s and 1s.ts
-    ms_haplotypes_list[[i - new_argv$loci_start + 1]] <- readLines(rent_in_fn)
+    ms_haplotypes_list[[i - run_argv$loci_start + 1]] <- readLines(rent_in_fn)
     
     print(paste("simulation locus", as.character(i), "of trait", as.character(iter), "complete"))
 }
 
+save.image("check_trees.RData")
+
 ##rescale branch length of RENT+ trees
-if(!is.na(new_argv$rent)){
-  for(i in 1:(new_argv$loci_end - new_argv$loci_start + 1)){
+if(!is.na(run_argv$rent)){
+  for(i in 1:(run_argv$loci_end - run_argv$loci_start + 1)){
     rent_trees_list[[i]]$edge.length <- rent_trees_list[[i]]$edge.length*2
   }
 }
 
 ##rescale branch length of relate trees
-if(!is.na(new_argv$relate)){
-    for(i in 1:(new_argv$loci_end - new_argv$loci_start + 1)){
+if(!is.na(run_argv$relate)){
+    for(i in 1:(run_argv$loci_end - run_argv$loci_start + 1)){
       relate_trees_list[[i]]$edge.length <- relate_trees_list[[i]]$edge.length/(28 * 2 * N)
     }
 }
@@ -261,16 +296,16 @@ if(!is.na(new_argv$relate)){
 
 ##rescale branch length of tsinfer trees
 ##The original branch lengths are given in units of generations.
-if(!is.na(new_argv$tsinfer)){
-  for(i in 1:(new_argv$loci_end - new_argv$loci_start + 1)){
+if(!is.na(run_argv$tsinfer)){
+  for(i in 1:(run_argv$loci_end - run_argv$loci_start + 1)){
       tsinfer_trees_list[[i]]$edge.length <- tsinfer_trees_list[[i]]$edge.length*2
   }
 }
 
 ##rescale branch length of argweaver trees
 ##The original branch lengths are given in units of generations.
-if(!is.na(new_argv$argweaver)){
-    for(i in 1:(new_argv$loci_end - new_argv$loci_start + 1)){
+if(!is.na(run_argv$argweaver)){
+    for(i in 1:(run_argv$loci_end - run_argv$loci_start + 1)){
         for(j in 1:length(argweaver_trees_list[[i]])){
             argweaver_trees_list[[i]][[j]]$edge.length <- argweaver_trees_list[[i]][[j]]$edge.length/(2*N)
         }
@@ -278,15 +313,15 @@ if(!is.na(new_argv$argweaver)){
 }
 
 ##rescale branch length of argneedle trees
-if(!is.na(new_argv$argneedle)){
-  for(i in 1:(new_argv$loci_end - new_argv$loci_start + 1)){
+if(!is.na(run_argv$argneedle)){
+  for(i in 1:(run_argv$loci_end - run_argv$loci_start + 1)){
     argneedle_trees_list[[i]]$edge.length <- argneedle_trees_list[[i]]$edge.length/(2*N)
   }
 }
 
 ##rescale branch length of singer trees
-if(!is.na(new_argv$singer)){
-  for(i in 1:(new_argv$loci_end - new_argv$loci_start + 1)){
+if(!is.na(run_argv$singer)){
+  for(i in 1:(run_argv$loci_end - run_argv$loci_start + 1)){
     for(j in 1:length(singer_trees_list[[i]])){
       singer_trees_list[[i]][[j]]$edge.length <- singer_trees_list[[i]][[j]]$edge.length/(2*N)
     }
@@ -307,7 +342,7 @@ coal_time_ls(ms_trees_list, anc_trees_ms, der_trees_ms, "ms")
 lins_ls(ms_trees_list, "ms")
 
 
-if(!is.na(new_argv$rent)){
+if(!is.na(run_argv$rent)){
     check_samecor_sel_site("rent", rent_trees_list)
     split_tree("rent", rent_trees_list)
     coal_time_ls(rent_trees_list, anc_trees_rent, der_trees_rent, "rent")
@@ -315,35 +350,35 @@ if(!is.na(new_argv$rent)){
 }
 
 
-if(!is.na(new_argv$relate)){
+if(!is.na(run_argv$relate)){
     check_samecor_sel_site("relate", relate_trees_list)
     split_tree("relate", relate_trees_list)
     coal_time_ls(relate_trees_list, anc_trees_relate, der_trees_relate, "relate")
     lins_ls(relate_trees_list, "relate")
 }
 
-if(!is.na(new_argv$tsinfer)){
+if(!is.na(run_argv$tsinfer)){
     check_samecor_sel_site("tsinfer", tsinfer_trees_list)
     split_tree("tsinfer", tsinfer_trees_list)
     coal_time_ls(tsinfer_trees_list, anc_trees_tsinfer, der_trees_tsinfer, "tsinfer")
     lins_ls(tsinfer_trees_list, "tsinfer")
 }
 
-if(!is.na(new_argv$argweaver)){
+if(!is.na(run_argv$argweaver)){
     mcmc_check_samecor_sel_site(argweaver_trees_list)
     mcmc_split_tree("argweaver", argweaver_trees_list)
     mcmc_coal_time_ls(argweaver_trees_list, anc_trees_argweaver, der_trees_argweaver, "argweaver")
     aw_lins_ls(argweaver_trees_list, "argweaver")
 }
 
-if(!is.na(new_argv$argneedle)){
+if(!is.na(run_argv$argneedle)){
   check_samecor_sel_site("argneedle", argneedle_trees_list)
   split_tree("argneedle", argneedle_trees_list)
   coal_time_ls(argneedle_trees_list, anc_trees_argneedle, der_trees_argneedle, "argneedle")
   lins_ls(argneedle_trees_list, "argneedle")
 }
 
-if(!is.na(new_argv$singer)){
+if(!is.na(run_argv$singer)){
   mcmc_check_samecor_sel_site(singer_trees_list)
   mcmc_split_tree("singer", singer_trees_list)
   mcmc_coal_time_ls(singer_trees_list, anc_trees_singer, der_trees_singer, "singer")
@@ -351,10 +386,10 @@ if(!is.na(new_argv$singer)){
 }
 
 
-fn_str <- paste("loci", as.character(length(trajs)), "_sintens", as.character(round(sel.intens,3)), "_N", as.character(N), "_nchr", as.character(new_argv$n_chromss), "_ton", as.character(t), "_toff", as.character(t.off), "_herit", as.character(herit), "_", as.character(iter), "_locus", as.character(new_argv$loci_start), "_", as.character(new_argv$loci_end), sep = "")
+fn_str <- paste("loci", as.character(length(trajs)), "_sintens", as.character(round(sel.intens,3)), "_N", as.character(N), "_nchr", as.character(run_argv$n_chromss), "_ton", as.character(t), "_toff", as.character(t.off), "_herit", as.character(herit), "_", as.character(iter), "_locus", as.character(run_argv$loci_start), "_", as.character(run_argv$loci_end), sep = "")
 
 
-save.image(paste(new_argv$out, '/', fn_str, ".RData", sep = ""))
+save.image(paste(run_argv$out, '/', fn_str, ".RData", sep = ""))
 
 
 	
